@@ -18,7 +18,8 @@ class RawFramesExtractorCV2():
         self.random_shift = random_shift
         self.strategy = strategy
         self.transform = self._transform(self.size)
-        self.image_tmpl ='img_{:05d}.jpg'
+        # self.image_tmpl ='img_{:05d}.jpg'
+        self.image_tmpl ='frame_{:03d}.jpg'
 
         if self.strategy == 1:
             print('[sampling with 30 fps]')
@@ -79,8 +80,40 @@ class RawFramesExtractorCV2():
             offsets = [(idx * t_stride + start_idx1) % len(video_list) for idx in range(self.num_segments)]
             return np.array(offsets) + 1
 
-
     def video_to_tensor(self, frames_folder, preprocess,  start_time=None, end_time=None):
+        # 1. Lấy danh sách tất cả các file .jpg trong thư mục video (ví dụ video0)
+        frames_list = [f for f in os.listdir(frames_folder) if f.endswith('.jpg')]
+        
+        # 2. Trích xuất chỉ số từ tên file (ví dụ: 'frame_003.jpg' -> 3) để sắp xếp cho đúng thứ tự thời gian
+        frame_indexs = []
+        for f in frames_list:
+            try:
+                # Tách chuỗi theo '_' và '.' để lấy số
+                idx = int(f.split('_')[1].split('.')[0])
+                frame_indexs.append(idx)
+            except:
+                continue
+        
+        frame_indexs.sort() # Sắp xếp [1, 2, 3, ..., 12]
+
+        # 3. Load ảnh vào bộ nhớ
+        images = []
+        for ind in frame_indexs:
+            img_path = os.path.join(frames_folder, self.image_tmpl.format(ind))
+            if os.path.exists(img_path):
+                # Đọc ảnh, convert RGB và đưa qua hàm preprocess (resize, crop, normalize)
+                segs_imgs = [preprocess(Image.open(img_path).convert("RGB"))]
+                images.extend(segs_imgs)
+
+        # 4. Gom thành Tensor
+        if len(images) > 0:
+            video_data = th.tensor(np.stack(images))
+        else:
+            video_data = th.zeros(1)
+            
+        return {'video': video_data}
+
+    # def video_to_tensor(self, frames_folder, preprocess,  start_time=None, end_time=None):
         if start_time is not None or end_time is not None:
             assert isinstance(start_time, int) and isinstance(end_time, int) \
                    and start_time > -1 and end_time > start_time
