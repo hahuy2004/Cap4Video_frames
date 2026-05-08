@@ -366,7 +366,7 @@ def train_epoch(epoch, args, model, train_dataloader, device, n_gpu, optimizer, 
                              'Loss: {loss:.4f}, Time/step: {batch_time.avg:.3f}').format(
                                 epoch+1, args.epochs, step+1, len(train_dataloader),
                                 eta_sec, loss=loss, batch_time=batch_time,
-                                lr=optimizer.get_lr()[0]
+                                lr=optimizer.param_groups[0]['lr']
                              ))
 
     total_loss = total_loss / len(train_dataloader)
